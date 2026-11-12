@@ -26,6 +26,11 @@ def main():
     # This model_filename is a mere placeholder for the leraning file and right now it will live on the drive so it is looking like that. and the model folder in the PAD-LLM-main is not of use now, because the TPU will directly take the model
     # from the drive itself. 
     model_filename = "/content/drive/MyDrive/PAD-LLM_main/3D_CNN_attention_pool.pth"
+    # The final model is used for inference; this separate file preserves training
+    # progress and lets cnn_model.py resume after a Colab runtime interruption.
+    checkpoint_filename = (
+        "/content/drive/MyDrive/PAD-LLM_main/3D_CNN_attention_pool.checkpoint.pth"
+    )
     attack_file1='attack_data/ml-1m/Sur-ItemAE_fake_data_best.npz'
     attack_file2 ='attack_data/ml-1m/Sur-WeightedMF-sgd_fake_data_best.npz'
     attack_file3 = 'attack_data/ml-1m/posion_data.txt'
@@ -94,7 +99,15 @@ def main():
     if not os.path.exists(model_filename):
         print("[MAIN] Step 4: Starting CNN training...", flush=True)
         print("Training the ConvNeXt + Performer + Gate model...")
-        cnn_model = train_cnn_3d(cnn_model, rating_train_tensor, item_labels_tensor, y_train_tensor, learning_rate, epochs=30 )
+        cnn_model = train_cnn_3d(
+            cnn_model,
+            rating_train_tensor,
+            item_labels_tensor,
+            y_train_tensor,
+            learning_rate,
+            epochs=30,
+            checkpoint_path=checkpoint_filename,
+        )
         print("[MAIN] CNN training completed.", flush=True)
         save_model(cnn_model, model_filename)
     else:

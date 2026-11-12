@@ -6,6 +6,7 @@ import random
 import numpy as np
 from torch.utils.data import DataLoader, TensorDataset
 from contextlib import nullcontext
+import os
 
 def set_random_seed(seed=42):
     random.seed(seed)
@@ -355,6 +356,7 @@ def train_cnn_3d(
     epsilon=0.01,
     alpha=0.005,
     num_steps=1,
+    checkpoint_path=None,
 ):
     # ==========FIX 1===========================
     # even though in main_ml_1m.py we change to mps as cpu but it won't work as intended, these lines reads torch.cuda.is_available() which is obviously be false and moved entire model back to cpu which will lead to slow processing.
@@ -363,7 +365,6 @@ def train_cnn_3d(
     # to overcome this we use
     device = model.device
     model = model.to(device)
-    model.apply(init_weights)
     item_labels_tensor = item_labels_tensor.to(device)
     rating_train_tensor = rating_train_tensor.float().to(device)
     y_train_tensor = y_train_tensor.view(-1).float().to(device)
@@ -378,25 +379,48 @@ def train_cnn_3d(
         steps_per_epoch=len(train_dataloader),
         epochs=epochs,
     )
-    # scaler = torch.amp.GradScaler(enabled=(device.type == "cuda"))
-    # above code normally helps prevent numerical problems when training with smaller 16-bit numbers. 
-    # We're temporarily disabling it so the model uses ordinary float32 calculations.
+    # AMP/GradScaler is intentionally disabled because Performer attention produced
+    # NaN gradients with reduced-precision CUDA calculations; training stays in float32.
     scaler = torch.amp.GradScaler(enabled=False) 
+    start_epoch = 0
 
-    torch.autograd.set_detect_anomaly(True)
+    # A checkpoint contains more than weights: it also stores optimizer and scheduler
+    # state, allowing an interrupted Colab run to continue after the last saved epoch.
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        checkpoint = torch.load(
+            checkpoint_path,
+            map_location=device,
+            weights_only=False,
+        )
+        model.load_state_dict(checkpoint["model_state_dict"])
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+        scheduler.load_state_dict(checkpoint["scheduler_state_dict"])
+        scaler.load_state_dict(checkpoint["scaler_state_dict"])
+        start_epoch = checkpoint["epoch"]
+        print(
+            f"[CNN] Resuming from checkpoint after epoch {start_epoch}.",
+            flush=True,
+        )
+    else:
+        model.apply(init_weights)
 
-    for epoch in range(epochs):
+    # Anomaly detection was useful while locating the NaN source, but it slows normal
+    # training considerably, so it is disabled for the full experiment.
+    torch.autograd.set_detect_anomaly(False)
+
+    for epoch in range(start_epoch, epochs):
         model.train()
         total_loss = 0.0
         for batch_idx, (rating_batch, y_batch) in enumerate(train_dataloader):
 
-            print(
-                f"[CNN] Epoch {epoch+1}/{epochs} | "
-                f"Batch {batch_idx+1}/{len(train_dataloader)}",
-                flush=True
-            )
-
             debug = (epoch == 0 and batch_idx == 0)
+            # Keep logs readable during long runs while still showing periodic progress.
+            if batch_idx % 100 == 0:
+                print(
+                    f"[CNN] Epoch {epoch+1}/{epochs} | "
+                    f"Batch {batch_idx+1}/{len(train_dataloader)}",
+                    flush=True
+                )
 
             rating_batch = rating_batch.to(device)
             y_batch = y_batch.to(device)
@@ -449,10 +473,8 @@ def train_cnn_3d(
                 con_loss = contrastive_criterion(feats, hard_labels)
 
                 loss = cls_loss + con_loss
-            print("[CNN] Starting backward propagation...", flush=True)
 
             scaler.scale(loss).backward()
-            print("[CNN] Backward completed successfully.", flush=True)
 
             scaler.step(optimizer)
             scaler.update()
@@ -464,4 +486,24 @@ def train_cnn_3d(
         print(f"Epoch [{epoch + 1}/{epochs}], Training Loss: {avg_train_loss:.4f}")
         if device.type == "cuda":
             torch.cuda.empty_cache()
+        if checkpoint_path:
+            # Save only after a complete epoch so a restart loses at most one epoch.
+            checkpoint_dir = os.path.dirname(checkpoint_path)
+            if checkpoint_dir:
+                os.makedirs(checkpoint_dir, exist_ok=True)
+            torch.save(
+                {
+                    "epoch": epoch + 1,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "scheduler_state_dict": scheduler.state_dict(),
+                    "scaler_state_dict": scaler.state_dict(),
+                },
+                checkpoint_path,
+            )
+            print(
+                f"[CNN] Checkpoint saved after epoch {epoch + 1}: "
+                f"{checkpoint_path}",
+                flush=True,
+            )
     return model
