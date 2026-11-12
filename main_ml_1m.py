@@ -23,7 +23,9 @@ def main():
     features_file = 'data/ml-1m/movies.dat'
     # I change the file path so that in line about whether to choose this pretrained or we will train section, in load_mode(cnn_model, mode_filename) if not os.path.exists(model_filename:).. in line about 71 72 73 around that somewhere.
     # so that everytime it will use the attention pooling, that I fixed and not the baseline model.
-    model_filename = "model/ml_1m/3D_CNN_pase1_pooled.pth"
+    # This model_filename is a mere placeholder for the leraning file and right now it will live on the drive so it is looking like that. and the model folder in the PAD-LLM-main is not of use now, because the TPU will directly take the model
+    # from the drive itself. 
+    model_filename = "/content/drive/MyDrive/PAD-LLM_main/3D_CNN_attention_pool.pth"
     attack_file1='attack_data/ml-1m/Sur-ItemAE_fake_data_best.npz'
     attack_file2 ='attack_data/ml-1m/Sur-WeightedMF-sgd_fake_data_best.npz'
     attack_file3 = 'attack_data/ml-1m/posion_data.txt'
@@ -126,7 +128,12 @@ def main():
     posion_attack_features = extract_features(cnn_model, rating_test_tensor6, item_labels_tensor, device, )
     print("[MAIN] Poisoning attack features extracted.", flush=True)
 
-    torch.mps.empty_cache()
+    # as the structure shifted from mps to tpu, we need to check where t5 embeddings will live. 
+    # previously it was only torch.mps.empty_cache() but cuda is also possiblity.
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    elif device.type == "mps":
+        torch.mps.empty_cache()
 
     detection_model = DetectionModel().to(device)
     train_detection_model(detection_model, train_features, y_train_tensor)
