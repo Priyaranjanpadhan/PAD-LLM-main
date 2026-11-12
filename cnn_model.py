@@ -378,7 +378,10 @@ def train_cnn_3d(
         steps_per_epoch=len(train_dataloader),
         epochs=epochs,
     )
-    scaler = torch.amp.GradScaler(enabled=(device.type == "cuda"))
+    # scaler = torch.amp.GradScaler(enabled=(device.type == "cuda"))
+    # above code normally helps prevent numerical problems when training with smaller 16-bit numbers. 
+    # We're temporarily disabling it so the model uses ordinary float32 calculations.
+    scaler = torch.amp.GradScaler(enabled=False) 
 
     torch.autograd.set_detect_anomaly(True)
 
@@ -399,11 +402,12 @@ def train_cnn_3d(
             y_batch = y_batch.to(device)
             optimizer.zero_grad(set_to_none=True)
 
-            amp_context = (
-                torch.amp.autocast(device_type="cuda")
-                if device.type == "cuda"
-                else nullcontext()
-            )
+            # amp_context = (
+            #     torch.amp.autocast(device_type="cuda")
+            #     if device.type == "cuda"
+            #     else nullcontext()
+            # )
+            amp_context = nullcontext()
 
             with amp_context:
                 rating_batch, y_batch = augment_data(rating_batch, y_batch)
