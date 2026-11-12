@@ -1,0 +1,31 @@
+# Python environments and packaging artifacts
+.venv/
+venv/
+env/
+.env
+.env/
+*.egg-info/
+dist/
+build/
+
+# Python caches and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.iml
+
+# Local operating-system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs and local run output
+*.log
+*.out
