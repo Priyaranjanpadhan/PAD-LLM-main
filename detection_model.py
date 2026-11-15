@@ -28,9 +28,17 @@ def _get_best_device():
         return torch.device("cuda")
     return torch.device("cpu")
 
-def train_detection_model(model, X_train, y_train, epochs=100, patience=100, min_delta=1e-4):
+def train_detection_model(
+    model,
+    X_train,
+    y_train,
+    epochs=100,
+    patience=100,
+    min_delta=1e-4,
+    device=None,
+):
 
-    device = _get_best_device()
+    device = device or _get_best_device()
     model.to(device)
     X_train = X_train.to(device)
     y_train = y_train.to(device)
@@ -56,8 +64,8 @@ def train_detection_model(model, X_train, y_train, epochs=100, patience=100, min
         if patience_counter >= patience:
             break
 
-def test_detection_model(model, X_test, y_test,threshold):
-    device = _get_best_device()
+def test_detection_model(model, X_test, y_test, threshold, device=None):
+    device = device or _get_best_device()
     model.to(device)
     X_test = X_test.to(device)
     y_test = y_test.to(device)
@@ -66,12 +74,23 @@ def test_detection_model(model, X_test, y_test,threshold):
         logits = model(X_test)
         predictions = torch.sigmoid(logits)
         predictions_rounded = (predictions > threshold).float()
+        # True +ve, correct prediction
         TP = ((predictions_rounded == 1) & (y_test.view(-1, 1) == 1)).sum().item()
+        # False -ve, False alarm, shows genuine to a malicious user
         FN = ((predictions_rounded == 0) & (y_test.view(-1, 1) == 1)).sum().item()
         Recall = TP / (TP + FN) if (TP + FN) > 0 else 0
+        # False +ve, genuine user as malicu=ious
         FP = ((predictions_rounded == 1) & (y_test.view(-1, 1) == 0)).sum().item()
         Precision = TP / (TP + FP) if (TP + FP) > 0 else 0
         F_measure = (2 * Precision * Recall) / (Precision + Recall) if (Precision + Recall) > 0 else 0
         print(f"Recall: {Recall * 100:.2f}%")
         print(f"Precision: {Precision * 100:.2f}%")
         print(f"F-Measure (F1 Score): {F_measure * 100:.2f}%")
+        return {
+            "precision": Precision,
+            "recall": Recall,
+            "f1": F_measure,
+            "true_positives": TP,
+            "false_positives": FP,
+            "false_negatives": FN,
+        }
