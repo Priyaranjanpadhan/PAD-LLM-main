@@ -61,14 +61,14 @@ BINARY_THRESHOLD = 0.95
 
 def b4_root() -> Path:
     if Path("/content").is_dir():
-        return Path("/content/drive/MyDrive/PAD-LLM/phase3/B4")
-    return ROOT / "phase3/results/B4"
+        return Path("/content/drive/MyDrive/PAD-LLM/phase3/b4")
+    return ROOT / "phase3/results/b4"
 
 
 def b5_root() -> Path:
     if Path("/content").is_dir():
-        return Path("/content/drive/MyDrive/PAD-LLM/phase3/B5")
-    return ROOT / "phase3/results/B5"
+        return Path("/content/drive/MyDrive/PAD-LLM/phase3/b5")
+    return ROOT / "phase3/results/b5"
 
 
 def get_device() -> torch.device:

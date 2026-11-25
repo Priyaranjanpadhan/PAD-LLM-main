@@ -3,14 +3,15 @@
 Run ONLY the smoke test now (from repository root):
     python phase3/run_phase3_B4.py --smoke-test
 
-Later, after the entire Phase 3 implementation is ready, the existing B1/B2
-LOAO experiment orchestration can be reused with this B4 trainer/model:
+The existing B1/B2 LOAO orchestration is reused with this B4 trainer/model:
     python phase3/run_phase3_B4.py --check-only
     python phase3/run_phase3_B4.py --max-folds 1
     python phase3/run_phase3_B4.py
 
-There is NO GPU training in smoke-test mode. All actual B4 experiments use a
-NEW output folder (phase3/B4), independent from prior B1/B2/B3/Phase 2 files.
+B4 uses the B2/B3 model implementations as source code, but does not require
+trained B1/B2/B3 checkpoints. It trains its own model from the dataset.
+There is NO GPU training in smoke-test mode. B4 outputs go to
+phase3/results/b4 locally or MyDrive/PAD-LLM/phase3/b4 on Colab.
 """
 from __future__ import annotations
 

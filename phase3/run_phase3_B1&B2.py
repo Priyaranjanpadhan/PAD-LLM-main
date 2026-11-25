@@ -94,20 +94,21 @@ CUSTOM_OUTPUT_PARENT: Path | None = None
 
 
 def choose_output_root(variant: str) -> Path:
-    """Every artifact stays under a Phase 3 folder, never the Phase 2 directory.
-
-    On Colab:  MyDrive/PAD-LLM/phase3/<variant>/<held_out_attack>/...
-    Locally:   <repo>/phase3/results/<variant>/<held_out_attack>/...
-    You can override the parent folder with --output-root.
-    """
+    folders = {
+        "B1": "b1_b2/B1",
+        "B2": "b1_b2/B2",
+        "B3": "b3",
+        "B4": "b4",
+    }
     if CUSTOM_OUTPUT_PARENT is not None:
-        return CUSTOM_OUTPUT_PARENT / variant
-    if Path("/content").is_dir():
-        drive_dir = Path("/content/drive/MyDrive")
-        if not drive_dir.is_dir():
-            raise RuntimeError("Mount Google Drive before starting training.")
-        return drive_dir / "PAD-LLM" / "phase3" / variant
-    return Path("phase3") / "results" / variant
+        parent = CUSTOM_OUTPUT_PARENT
+    elif Path("/content").is_dir():
+        parent = Path("/content/drive/MyDrive/PAD-LLM/phase3")
+        if not Path("/content/drive/MyDrive").is_dir():
+            raise RuntimeError("Mount Google Drive first.")
+    else:
+        parent = PROJECT_ROOT / "phase3" / "results"
+    return parent / folders[variant]
 
 
 # ---------------------------------------------------------------------------
