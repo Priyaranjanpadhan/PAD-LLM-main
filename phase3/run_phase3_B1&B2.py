@@ -103,7 +103,7 @@ def choose_output_root(variant: str) -> Path:
     if CUSTOM_OUTPUT_PARENT is not None:
         parent = CUSTOM_OUTPUT_PARENT
     elif Path("/content").is_dir():
-        parent = Path("/content/drive/MyDrive/PAD-LLM/phase3")
+        parent = Path("/content/drive/MyDrive/PAD_LLM_main/phase3")
         if not Path("/content/drive/MyDrive").is_dir():
             raise RuntimeError("Mount Google Drive first.")
     else:
