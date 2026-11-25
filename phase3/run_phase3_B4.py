@@ -111,15 +111,22 @@ def train_b4_cnn(model, rating_train_tensor, item_labels_tensor, y_train_tensor,
         # Resume random generators as well as weights/optimizer, including
         # NumPy because the existing Mixup draws its coefficient using NumPy.
         if "loader_rng_state" in ckpt:
-            loader_rng.set_state(ckpt["loader_rng_state"])
+            loader_rng.set_state(
+                ckpt["loader_rng_state"].cpu().to(torch.uint8)
+            )
         if "torch_rng_state" in ckpt:
-            torch.set_rng_state(ckpt["torch_rng_state"])
+            torch.set_rng_state(
+                ckpt["torch_rng_state"].cpu().to(torch.uint8)
+            )
         if "numpy_rng_state" in ckpt:
             np.random.set_state(ckpt["numpy_rng_state"])
         if "python_rng_state" in ckpt:
             random.setstate(ckpt["python_rng_state"])
         if device.type == "cuda" and "cuda_rng_states" in ckpt:
-            torch.cuda.set_rng_state_all(ckpt["cuda_rng_states"])
+            torch.cuda.set_rng_state_all([
+                state.cpu().to(torch.uint8)
+                for state in ckpt["cuda_rng_states"]
+            ])
         start_epoch = int(ckpt["epoch"])
         print(f"[B4] Resuming at epoch {start_epoch+1}/{epochs}", flush=True)
     else:
